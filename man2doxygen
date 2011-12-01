@@ -1,0 +1,229 @@
+#! /usr/bin/perl
+use strict;
+use warnings;
+
+# To use this script as a filter for manual page source files, you need to
+# augment several settings in your Doxyfile:
+#
+# FILE_PATTERNS = *.h *.[1-9]
+#    ...in fact, what you really want is to add '*.[1-9]' to the default
+#    pattern list; the easy way to do this is just to list it along with
+#    those patterns from the default list that you actually require.
+#
+# FILTER_PATTERNS = *.[1-9]=man2doxygen
+#    ...if man2doxygen is in $PATH; otherwise use its full path explicitly.
+#
+# INPUT = ...something that matches the man sources to be included...
+
+sub split_cmd {
+  local ($_) = @_;
+  my @words;
+
+  $_ .= " \004";
+  while ($_ ne "\004") {
+    if (substr($_, 0, 1) eq '"') {
+      my $pos = index $_, '"', 1;
+      push @words, substr($_, 1, $pos - 1); $_ = substr($_, $pos + 2);
+    }
+    else {
+      my $pos = index $_, ' ';
+      if ($pos < 0) { push @words, $_; $_ = ""; }
+      else { push @words, substr($_, 0, $pos); $_ = substr($_, $pos + 1); }
+    }
+  }
+
+  return @words;
+}
+
+# FIXME NUKE-ME
+# Print a @section or @subsection command, with explicit title arguments if
+# the name has more than one word.  (Returns the space-concatenated title.)
+sub print_section {
+  my $cmd = shift @_;
+  my $heading = join(" ", @_);
+  if (scalar(@_) == 1) { print "$cmd $heading\n" }
+  else { print "$cmd ", join("_", @_), " $heading\n" }
+  return $heading;
+}
+
+sub maybe_tag {
+  return "" if scalar(@_) <= 1;
+  return join("_", @_) . " ";
+}
+
+sub parse_table {
+  local $_;
+  my $options = "";
+  my $tab = "\t";
+  my @formats;
+
+  while (<>) {
+    chomp;
+    if (substr($_, 0, 3) eq '.TE') {
+      print STDERR "$0: .TE while still reading table format lines\n";
+      return;
+    }
+
+    if (index($_, ';') > 0) {
+      tr/;//d;
+      $options = " $_ ";
+    }
+    else {
+      my $last = tr/.//d;
+      push @formats, $_;
+      last if $last;
+    }
+  }
+
+  print STDERR "Tbl options: {$options}\n";
+  print STDERR "Tbl formats: ", join(" // ", @formats), "\n";
+
+  print "<table>";
+
+  my $lineno = 0;
+  while (<>) {
+    chomp;
+    last if $_ eq '.TE';
+
+    my @columns = split /$tab/, $_;
+    my $td = ($lineno < $#formats)? "th" : "td";
+    print "<tr><$td>", join ("</$td><$td>", @columns), "</$td></tr>\n";
+    $lineno++;
+  }
+
+  print "</table>\n";
+}
+
+sub encode {
+  local $_ = $_[0];
+  s/@/@@/g;
+  return $_;
+}
+
+my %font_htmltag = ( B => 'b', I => 'em', R => '' );
+
+sub htmlify_fontcmd {
+  @_ = split_cmd($_[0]);
+  my $macro = substr(shift @_, 1);
+  @_ = (join(" ", @_)) if length($macro) == 1;
+  $macro = $macro x scalar(@_);
+
+  my $line = "";
+  for my $i (0 .. $#_) {
+    my $tag  = $font_htmltag{substr($macro, $i, 1)};
+    my $text = encode($_[$i]);
+    $line .= ($tag ne '')? "<$tag>$text</$tag>" : $text;
+  }
+
+  return $line;
+}
+
+sub htmlify_fontescape {
+  @_ = split /\\f(\[[^]]*\]|\(..|[^([])/, $_[0];
+  my $prevprevesc = 'R';
+  my $prevesc = 'R';
+  my $close = "";
+  for (my $i = 1; $i <= $#_; $i += 2) {
+    local $_ = $_[$i];
+    s/^\(//; s/^\[(.*)\]$/$1/;
+    $_ = $prevprevesc if $_ eq 'P';
+    my $tag = $font_htmltag{$_};
+
+    $prevprevesc = $prevesc;
+    $prevesc = $_;
+
+    $_ = $close;
+    $_ .= "<$tag>" if $tag ne '';
+    $_[$i] = $_;
+
+    $close = ($tag ne '')? "</$tag>" : "";
+  }
+
+  return join("", @_);
+}
+
+
+my ($command, $mansect);
+my $parskip = "1";
+my $seealso = 0;
+
+while (<>) {
+  chomp;
+  if (substr($_, 0, 1) eq '.') {
+    @_ = split_cmd($_);
+    my $macro = shift @_;
+    if ($macro =~ /^\.[BIR]+$/) {
+      my @font = (split //, substr($macro, 1)) x
+		      ((scalar(@_) + 1) / (length($macro) - 1));
+      for my $i (0 .. $#_) {
+	print "\@b " if $font[$i] eq "B";
+	print "\@e " if $font[$i] eq "I";
+	#print "\@ref " if $seealso && $i < $#_ && $_[$i+1] =~ /^\([0-9]\),?$/;
+	$_[$i] =~ s/@/\\@/g;
+	print $_[$i];
+      }
+      print "\n";
+    }
+    elsif ($macro eq '.P' || $macro eq '.PP' || $macro eq '.LP') {
+      if ($parskip == 0) { print "<br>\n" }
+      else { print "\n" }
+    }
+    elsif ($macro eq '.TP') {
+      my $line = <>;
+      chomp $line;
+      $line = htmlify_fontcmd($line) if $line =~ /^.[BIR][BIR]?\s/;
+      print "\@par $line\n";
+    }
+    elsif ($macro eq '.IP') {
+      # FIXME parameters
+      print "\@par\n";
+    }
+    elsif ($macro eq '.SH') {
+      my $heading = join(" ", @_);
+      if ($heading eq 'NAME') {
+	print "/** \@page $command $command($mansect)\n";
+	}
+
+      print '@section ', maybe_tag(@_), $heading, "\n";
+      $seealso = ($heading eq 'SEE ALSO')? 1 : 0;
+    }
+    elsif ($macro eq '.SS') {
+      print '@subsection ', maybe_tag(@_), join(" ",  @_), "\n";
+    }
+    elsif ($macro eq '.' || $macro eq '.\"') {
+      # .\" is a comment.
+    }
+    #elsif ($macro eq '.RS') {
+    #  # Push indent level += $0 (default 'n')
+    #}
+    #elsif ($macro eq '.RE') {
+    #  # Pop $0 indent levels (default 1)
+    #}
+    elsif ($macro eq '.PD') {
+      push @_, "1" if scalar(@_) == 0;
+      $parskip = $_[0];
+    }
+    elsif ($macro eq '.TH') {
+      $command = $_[0];
+      $mansect = $_[1];
+    }
+    elsif ($macro eq '.TS') {
+      parse_table();
+    }
+    else { print STDERR "$0: \"$macro\" not processed\n" }
+  }
+  else {
+    s/\\-/\&mdash;/g;
+    s/^#/\@#/;
+    $_ = htmlify_fontescape($_);
+    print "$_\n";
+  }
+}
+
+my $modeline = "vim";
+print <<"EOF";
+*/
+
+// $modeline:set filetype=doxygen:
+EOF
+# vim:set sw=2:
