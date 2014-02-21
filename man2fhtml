@@ -1,0 +1,110 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+sub split_quoted {
+  local ($_) = @_;
+  my ($word, @words);
+  $_ .= ' ';
+
+  s/\\\s/\032/g; # Temporarily change \-whitespace to SUB characters...
+
+  while (/\S/) {
+    s/^\s*//;
+    if (substr($_, 0, 1) eq '"') { ($word, $_) = split /"/, substr($_, 1), 2 }
+    else { ($word, $_) = split /\s/, $_, 2 }
+    $word =~ s/\032/ /g; # ...and back to unescaped spaces
+    push @words, $word;
+  }
+  return @words;
+}
+
+sub conv_fontescape {
+  local ($_) = $_[0];
+  s{\\fB(.*?)\\fP}{<b>$1</b>}g;
+  s{\\fI(.*?)\\fP}{<em>$1</em>}g;
+  return $_;
+}
+
+my %special = (
+  em => '&mdash;', en => '&ndash;', hy => '-',
+  rg => '&reg;', co => '&copy;',
+  pl => '+', mi => '&minus;', eq => '=',
+  '>=' => '&ge;', '<=' => '&le;', '!=' => '&ne;',
+  '+-' => '&plusmn;', mu => '&times;', di => '&divide;', '**' => '&lowast;',
+  '12' => '&frac12;', '14' => '&frac14;', '34' => '&frac34;',
+  bu => '&bull;', de => '&deg;', dg => '&dagger;', dd => '&Dagger;',
+  ua => '&uarr;', da => '&darr;', '->' => '&rarr;', '<-' => '&larr;'
+#=> '&hellip;',
+#=> '&ldquo;',
+#=> '&rdquo;',
+#=> '&lsquo;',
+#=> '&rsquo;',
+  );
+
+sub conv_special {
+  local ($_) = $_[0];
+  while (s/\Q\(\E(..)/$special{$1}/eg) { }
+  return $_;
+}
+
+my %section = ( SH => 'h1', SS => 'h2' );
+sub section {
+  my $level = $section{shift @_};
+  print "<$level>@_</$level>\n";
+
+}
+
+sub definition {
+}
+
+my %font_style = ( B => 'b', I => 'em', R => undef );
+sub singlefont {
+  my $style = $font_style{shift @_};
+  print "<$style>@_</$style>\n";
+}
+
+sub twinfont {
+  my $font = shift @_;
+  for my $i (0 .. $#_) {
+    my $style = $font_style{substr($font, $i % 2, 1)};
+    print "<$style>" if defined $style;
+    print $_[$i];
+    print "</$style>" if defined $style;
+  }
+  print "\n";
+}
+
+my %constant = (
+  TH => undef, br => '<br>',
+  PP => '<p>', LP => '<p>', P => '<p>'
+  );
+sub constant {
+  local ($_) = $constant{shift @_};
+  print "$_\n" if defined $_;
+}
+
+my %request = (
+  TH => \&constant, SH => \&section, SS => \&section,
+  PP => \&constant, P => \&constant, LP => \&constant,
+  TP => \&definition,
+  B => \&singlefont, I => \&singlefont, BI => \&twinfont, BR => \&twinfont,
+  IB => \&twinfont, IR => \&twinfont, RB => \&twinfont, RI => \&twinfont,
+  br => \&constant
+
+  # IP RE RS SH TE TS
+  );
+
+$0 =~ s{.*/}{};
+
+while (<>) {
+  chomp;
+
+  if (/^[.']/) {
+    @_ = split_quoted(substr($_, 1));
+    if (exists $request{$_[0]}) { $request{$_[0]}(@_) }
+    else { warn "$0: unknown request '$_[0]'\n" }
+  }
+  elsif ($_ eq '') { $request{PP}('PP') }
+  else { print conv_fontescape(conv_special($_)), "\n" }
+}
