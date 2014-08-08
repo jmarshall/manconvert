@@ -48,6 +48,9 @@ sub conv_special {
   return $_;
 }
 
+sub ignore {
+}
+
 my %section = ( SH => 'h1', SS => 'h2' );
 sub section {
   my $level = $section{shift @_};
@@ -90,9 +93,9 @@ my %request = (
   TP => \&definition,
   B => \&singlefont, I => \&singlefont, BI => \&twinfont, BR => \&twinfont,
   IB => \&twinfont, IR => \&twinfont, RB => \&twinfont, RI => \&twinfont,
-  br => \&constant
-
-  # IP RE RS SH TE TS
+  br => \&constant, ad => \&ignore, na => \&ignore,
+  # IP RE RS TE TS
+  '\"' => \&ignore
   );
 
 $0 =~ s{.*/}{};
