@@ -49,13 +49,13 @@ sub conv_special {
 }
 
 sub ignore {
+  return undef;
 }
 
 my %section = ( SH => 'h1', SS => 'h2' );
 sub section {
   my $level = $section{shift @_};
-  print "<$level>@_</$level>\n";
-
+  return "<$level>@_</$level>";
 }
 
 sub definition {
@@ -64,18 +64,19 @@ sub definition {
 my %font_style = ( B => 'b', I => 'em', R => undef );
 sub singlefont {
   my $style = $font_style{shift @_};
-  print "<$style>@_</$style>\n";
+  return "<$style>@_</$style>";
 }
 
 sub twinfont {
   my $font = shift @_;
+  my $out = "";
   for my $i (0 .. $#_) {
     my $style = $font_style{substr($font, $i % 2, 1)};
-    print "<$style>" if defined $style;
-    print $_[$i];
-    print "</$style>" if defined $style;
+    $out .= "<$style>" if defined $style;
+    $out .= $_[$i];
+    $out .= "</$style>" if defined $style;
   }
-  print "\n";
+  return $out;
 }
 
 my %constant = (
@@ -83,8 +84,7 @@ my %constant = (
   PP => '<p>', LP => '<p>', P => '<p>'
   );
 sub constant {
-  local ($_) = $constant{shift @_};
-  print "$_\n" if defined $_;
+  return $constant{shift @_};
 }
 
 my %request = (
@@ -100,14 +100,20 @@ my %request = (
 
 $0 =~ s{.*/}{};
 
-while (<>) {
+sub expand_line {
+  local $_ = $_[0];
   chomp;
 
   if (/^[.']/) {
     @_ = split_quoted(substr($_, 1));
-    if (exists $request{$_[0]}) { $request{$_[0]}(@_) }
-    else { warn "$0: unknown request '$_[0]'\n" }
+    if (exists $request{$_[0]}) { return $request{$_[0]}(@_) }
+    else { warn "$0: unknown request '$_[0]'\n"; return undef }
   }
-  elsif ($_ eq '') { $request{PP}('PP') }
-  else { print conv_fontescape(conv_special($_)), "\n" }
+  elsif ($_ eq '') { return $request{PP}('PP') }
+  else { return conv_fontescape(conv_special($_)) }
+}
+
+while (<>) {
+  $_ = expand_line($_);
+  print "$_\n" if defined $_;
 }
