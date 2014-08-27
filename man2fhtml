@@ -2,6 +2,8 @@
 use strict;
 use warnings;
 
+my @paramode = ('p');
+
 sub split_quoted {
   local ($_) = @_;
   my ($word, @words);
@@ -61,7 +63,32 @@ sub section {
   return "<$level>@_</$level>";
 }
 
+sub paragraph {
+  my $prefix = "";
+  if ($paramode[0] eq 'dl' && $_[0] ne 'IP' && $_[0] ne '') {
+    $prefix = "</dd></dl>";
+    $paramode[0] = 'p';
+  }
+  return "$prefix<p>";
+}
+
+sub setmargin {
+  unshift @paramode, 'p';
+  return undef;
+}
+
+sub resetmargin {
+  my $prevmode = shift @paramode;
+  return ($prevmode eq 'dl')? '</dd></dl>' : undef;
+}
+
 sub definition {
+  my $prefix = "</dd>";
+  if ($paramode[0] ne 'dl') { $prefix = "<dl>"; $paramode[0] = 'dl'; }
+
+  my $line = <>;
+  my $term = expand_line($line);
+  return "$prefix<dt>$term</dt><dd>";
 }
 
 my %font_style = ( B => 'b', I => 'em', R => undef );
@@ -85,7 +112,6 @@ sub twinfont {
 
 my %constant = (
   TH => undef, br => '<br>',
-  PP => '<p>', LP => '<p>', P => '<p>'
   );
 sub constant {
   return $constant{shift @_};
@@ -93,12 +119,12 @@ sub constant {
 
 my %request = (
   TH => \&constant, SH => \&section, SS => \&section,
-  PP => \&constant, P => \&constant, LP => \&constant,
-  TP => \&definition,
+  PP => \&paragraph, P => \&paragraph, IP => \&paragraph, LP => \&paragraph,
+  RS => \&setmargin, RE => \&resetmargin, TP => \&definition,
   B => \&singlefont, I => \&singlefont, BI => \&twinfont, BR => \&twinfont,
   IB => \&twinfont, IR => \&twinfont, RB => \&twinfont, RI => \&twinfont,
   br => \&constant, ad => \&ignore, na => \&ignore,
-  # IP RE RS TE TS
+  # TE TS
   '\"' => \&ignore
   );
 
@@ -113,7 +139,7 @@ sub expand_line {
     if (exists $request{$_[0]}) { return $request{$_[0]}(@_) }
     else { warn "$0: unknown request '$_[0]'\n"; return undef }
   }
-  elsif ($_ eq '') { return $request{PP}('PP') }
+  elsif ($_ eq '') { return paragraph('') }
   else { return conv_fontescape(conv_special($_)) }
 }
 
