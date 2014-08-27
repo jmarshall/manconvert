@@ -21,8 +21,8 @@ sub split_quoted {
 
 sub conv_fontescape {
   local ($_) = $_[0];
-  s{\\fB(.*?)\\fP}{<b>$1</b>}g;
-  s{\\fI(.*?)\\fP}{<em>$1</em>}g;
+  s{\\fB(.*?)\\f[PR]}{<b>$1</b>}g;
+  s{\\fI(.*?)\\f[PR]}{<em>$1</em>}g;
   return $_;
 }
 
@@ -30,6 +30,7 @@ my %special = (
   em => '&mdash;', en => '&ndash;', hy => '-',
   rg => '&reg;', co => '&copy;',
   pl => '+', mi => '&minus;', eq => '=',
+  '(<' => '&lt;', '(>' => '&gt;', '(&' => '&amp;',
   '>=' => '&ge;', '<=' => '&le;', '!=' => '&ne;',
   '+-' => '&plusmn;', mu => '&times;', di => '&divide;', '**' => '&lowast;',
   '12' => '&frac12;', '14' => '&frac14;', '34' => '&frac34;',
@@ -44,6 +45,8 @@ my %special = (
 
 sub conv_special {
   local ($_) = $_[0];
+  s/\\-/\\(en/g;
+  s/([<>&])/\\(($1/g;
   while (s/\Q\(\E(..)/$special{$1}/eg) { }
   return $_;
 }
@@ -64,6 +67,7 @@ sub definition {
 my %font_style = ( B => 'b', I => 'em', R => undef );
 sub singlefont {
   my $style = $font_style{shift @_};
+  @_ = map { conv_special($_) } @_;
   return "<$style>@_</$style>";
 }
 
@@ -73,7 +77,7 @@ sub twinfont {
   for my $i (0 .. $#_) {
     my $style = $font_style{substr($font, $i % 2, 1)};
     $out .= "<$style>" if defined $style;
-    $out .= $_[$i];
+    $out .= conv_special($_[$i]);
     $out .= "</$style>" if defined $style;
   }
   return $out;
