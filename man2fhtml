@@ -117,6 +117,51 @@ sub constant {
   return $constant{shift @_};
 }
 
+sub table {
+  my @formats = ();
+  my $options = "";
+  my $alignment = "";
+  my $separator = "\t";
+  while (<>) {
+    chomp;
+    my $last = 0;
+    if (s/;$//) {
+      $options = $_;
+      $alignment = q{ align="center"} if /cent[er][re]/;
+      $separator = $1 if /tab\s*\((.)\)/;
+    }
+    else {
+      $last = 1 if s/\.$//;
+      s/\s//g;
+      push @formats, lc $_;
+    }
+    last if $last;
+  }
+
+  my $out = "<table$alignment>\n";
+
+  while (<>) {
+    chomp;
+    last if /^[.']TE/;
+
+    my ($format, $td);
+    if (scalar @formats > 1) { $format = shift @formats; $td = "th" }
+    else { $format = $formats[0]; $td = "td" }
+
+    $out .= "<tr>";
+    foreach (split $separator, $_) {
+      s/^\s*//; s/\s*$//;
+
+      # FIXME interpret $format
+      $out .= "<$td>$_</$td>";
+    }
+    $out .= "</tr>\n";
+  }
+
+  $out .= "</table>";
+  return $out;
+}
+
 my %request = (
   TH => \&constant, SH => \&section, SS => \&section,
   PP => \&paragraph, P => \&paragraph, IP => \&paragraph, LP => \&paragraph,
@@ -124,8 +169,7 @@ my %request = (
   B => \&singlefont, I => \&singlefont, BI => \&twinfont, BR => \&twinfont,
   IB => \&twinfont, IR => \&twinfont, RB => \&twinfont, RI => \&twinfont,
   br => \&constant, ad => \&ignore, na => \&ignore,
-  # TE TS
-  '\"' => \&ignore
+  TS => \&table, '\"' => \&ignore
   );
 
 $0 =~ s{.*/}{};
