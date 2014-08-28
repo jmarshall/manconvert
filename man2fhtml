@@ -32,17 +32,14 @@ my %special = (
   em => '&mdash;', en => '&ndash;', hy => '-',
   rg => '&reg;', co => '&copy;',
   pl => '+', mi => '&minus;', eq => '=',
-  '(<' => '&lt;', '(>' => '&gt;', '(&' => '&amp;',
+  # These '(x' escapes are locally invented and absent from groff
+  '(<' => '&lt;', '(>' => '&gt;', '(&' => '&amp;', '(.' => '&hellip;',
+  oq => '&lsquo;', cq => '&rsquo;', lq => '&ldquo;', rq => '&rdquo;',
   '>=' => '&ge;', '<=' => '&le;', '!=' => '&ne;',
   '+-' => '&plusmn;', mu => '&times;', di => '&divide;', '**' => '&lowast;',
   '12' => '&frac12;', '14' => '&frac14;', '34' => '&frac34;',
   bu => '&bull;', de => '&deg;', dg => '&dagger;', dd => '&Dagger;',
   ua => '&uarr;', da => '&darr;', '->' => '&rarr;', '<-' => '&larr;'
-#=> '&hellip;',
-#=> '&ldquo;',
-#=> '&rdquo;',
-#=> '&lsquo;',
-#=> '&rsquo;',
   );
 
 sub conv_special {
