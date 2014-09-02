@@ -2,7 +2,32 @@
 use strict;
 use warnings;
 
+use Getopt::Long qw(:config bundling no_ignore_case);
+
+my $mode = 'html';
+my $output_fname;
+
+my $usage = <<'EOF';
+Usage: man2fhtml [-m MODE] [-o FILE] FILE
+Options:
+  -m, --mode MODE    Set output mode to "html", "jekyll", or "raw"  [html]
+  -o, --output FILE  Write to FILE rather than standard output
+EOF
+
+die $usage if scalar @ARGV == 0;
+GetOptions(
+  'mode|m=s' => \$mode,
+  'output|o=s' => \$output_fname,
+  'help' => sub { print $usage; exit 0; }) or die $usage;
+
+my $TH_subref;
+$TH_subref = \&title_html if $mode eq 'html';
+$TH_subref = \&title_jekyll if $mode eq 'jekyll';
+$TH_subref = \&ignore if $mode eq 'raw';
+die "$0: unknown output mode \"$mode\"\n" unless defined $TH_subref;
+
 my @paramode = ('p');
+my $final_trailer;
 
 sub split_quoted {
   local ($_) = @_;
@@ -52,6 +77,32 @@ sub conv_special {
 
 sub ignore {
   return undef;
+}
+
+sub title_html {
+  my (undef, $title, $section) = @_;
+
+  $final_trailer = "</body></html>";
+  return substr(<<"EOF", 0, -1);
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>$title($section) manual page</title>
+</head><body class="manpage">
+EOF
+}
+
+sub title_jekyll {
+  my (undef, $title, $section) = @_;
+
+  $final_trailer = "</div>";
+  return substr(<<"EOF", 0, -1);
+---
+layout: manpage
+title: $title($section) manual page
+---
+<div class="manpage">
+EOF
 }
 
 my %section = ( SH => 'h1', SS => 'h2' );
@@ -160,7 +211,7 @@ sub table {
 }
 
 my %request = (
-  TH => \&constant, SH => \&section, SS => \&section,
+  TH => $TH_subref, SH => \&section, SS => \&section,
   PP => \&paragraph, P => \&paragraph, IP => \&paragraph, LP => \&paragraph,
   RS => \&setmargin, RE => \&resetmargin, TP => \&definition,
   B => \&singlefont, I => \&singlefont, BI => \&twinfont, BR => \&twinfont,
@@ -184,7 +235,21 @@ sub expand_line {
   else { return conv_fontescape(conv_special($_)) }
 }
 
+
+my $outf;
+if (defined $output_fname) {
+  open $outf, '>', $output_fname or die "$0: can't create $output_fname: $!\n";
+}
+else { $outf = \*STDOUT }
+
 while (<>) {
   $_ = expand_line($_);
-  print "$_\n" if defined $_;
+  print $outf "$_\n" if defined $_;
 }
+print $outf "$final_trailer\n" if defined $final_trailer;
+
+if (defined $output_fname) {
+  close $outf or die "$0: can't close $output_fname: $!\n";
+}
+
+exit 0;
