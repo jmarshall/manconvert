@@ -32,10 +32,10 @@ my $final_trailer;
 sub split_quoted {
   local ($_) = @_;
   my ($word, @words);
-  $_ .= ' ';
 
   s/\\\s/\032/g; # Temporarily change \-whitespace to SUB characters...
 
+  $_ .= ' ';
   while (/\S/) {
     s/^\s*//;
     if (substr($_, 0, 1) eq '"') { ($word, $_) = split /"/, substr($_, 1), 2 }
@@ -69,9 +69,11 @@ my %special = (
 
 sub conv_special {
   local ($_) = $_[0];
+  s/\\&//g;
   s/\\-/\\(en/g;
-  s/([<>&])/\\(($1/g;
+  s/&/&amp;/g;
   while (s/\Q\(\E(..)/$special{$1}/eg) { }
+  s/</&lt;/g; s/>/&gt;/g;
   return $_;
 }
 
