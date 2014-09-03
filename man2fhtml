@@ -110,7 +110,8 @@ EOF
 my %section = ( SH => 'h1', SS => 'h2' );
 sub section {
   my $level = $section{shift @_};
-  return "<$level>@_</$level>";
+  my $out = conv_fontescape(conv_special(join(' ', @_)));
+  return "<$level>$out</$level>";
 }
 
 sub paragraph {
@@ -129,6 +130,10 @@ sub setmargin {
 
 sub resetmargin {
   my $prevmode = shift @paramode;
+  if (scalar @paramode == 0) {
+    warn "$ARGV:$.: unmatched .RE request\n";
+    @paramode = ('p');
+  }
   return ($prevmode eq 'dl')? '</dd></dl>' : undef;
 }
 
@@ -231,7 +236,7 @@ sub expand_line {
   if (/^[.']/) {
     @_ = split_quoted(substr($_, 1));
     if (exists $request{$_[0]}) { return $request{$_[0]}(@_) }
-    else { warn "$0: unknown request '$_[0]'\n"; return undef }
+    else { warn "$ARGV:$.: unknown request '$_[0]'\n"; return undef }
   }
   elsif ($_ eq '') { return paragraph('') }
   else { return conv_fontescape(conv_special($_)) }
