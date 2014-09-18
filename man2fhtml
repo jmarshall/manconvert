@@ -95,15 +95,16 @@ EOF
 }
 
 sub title_jekyll {
-  my (undef, $title, $section) = @_;
+  my (undef, $title, $section, $date, $package, $section_text) = @_;
 
-  $final_trailer = "</div>";
   return substr(<<"EOF", 0, -1);
 ---
 layout: manpage
 title: $title($section) manual page
+package: $package
+date: $date
+section_text: $section_text
 ---
-<div class="manpage">
 EOF
 }
 
