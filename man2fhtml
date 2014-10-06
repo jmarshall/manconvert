@@ -6,16 +6,19 @@ use Getopt::Long qw(:config bundling no_ignore_case);
 
 my $mode = 'html';
 my $output_fname;
+my $permalink;
 
 my $usage = <<'EOF';
 Usage: man2fhtml [-m MODE] [-o FILE] FILE
 Options:
+  -l, --location URL Specify final location (e.g., for Jekyll front matter)
   -m, --mode MODE    Set output mode to "html", "jekyll", or "raw"  [html]
   -o, --output FILE  Write to FILE rather than standard output
 EOF
 
 die $usage if scalar @ARGV == 0;
 GetOptions(
+  'location|l=s' => \$permalink,
   'mode|m=s' => \$mode,
   'output|o=s' => \$output_fname,
   'help' => sub { print $usage; exit 0; }) or die $usage;
@@ -97,15 +100,13 @@ EOF
 sub title_jekyll {
   my (undef, $title, $section, $date, $package, $section_text) = @_;
 
-  return substr(<<"EOF", 0, -1);
----
-layout: manpage
-title: $title($section) manual page
-package: $package
-date: $date
-section_text: $section_text
----
-EOF
+  my @out;
+  push @out, "permalink: $permalink" if defined $permalink;
+  push @out, "layout: manpage", "title: $title($section) manual page";
+  push @out, "package: $package" if defined $package;
+  push @out, "date: $date" if defined $date;
+  push @out, "section_text: $section_text" if defined $section_text;
+  return join("\n", '---', @out, '---');
 }
 
 my %section = ( SH => 'h1', SS => 'h2' );
