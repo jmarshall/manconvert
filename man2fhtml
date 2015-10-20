@@ -84,6 +84,11 @@ sub ignore {
   return undef;
 }
 
+sub ignore_macro_def {
+  while (<>) { last if /^[.'][.]/ }
+  return undef;
+}
+
 sub title_html {
   my (undef, $title, $section) = @_;
 
@@ -169,6 +174,7 @@ sub twinfont {
 
 my %constant = (
   TH => undef, br => '<br>',
+  EX => "<pre>", EE => "</pre>",
   );
 sub constant {
   return $constant{shift @_};
@@ -225,7 +231,8 @@ my %request = (
   RS => \&setmargin, RE => \&resetmargin, TP => \&definition,
   B => \&singlefont, I => \&singlefont, BI => \&twinfont, BR => \&twinfont,
   IB => \&twinfont, IR => \&twinfont, RB => \&twinfont, RI => \&twinfont,
-  br => \&constant, ad => \&ignore, na => \&ignore,
+  br => \&constant, ad => \&ignore, na => \&ignore, de => \&ignore_macro_def,
+  EX => \&constant, EE => \&constant,
   TS => \&table, '\"' => \&ignore
   );
 
@@ -236,6 +243,7 @@ sub expand_line {
   chomp;
 
   if (/^[.']/) {
+    if (length $_ == 1) { return undef }
     @_ = split_quoted(substr($_, 1));
     if (exists $request{$_[0]}) { return $request{$_[0]}(@_) }
     else { warn "$ARGV:$.: unknown request '$_[0]'\n"; return undef }
