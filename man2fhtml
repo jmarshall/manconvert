@@ -70,14 +70,30 @@ my %special = (
   ua => '&uarr;', da => '&darr;', '->' => '&rarr;', '<-' => '&larr;'
   );
 
+my %strings = (
+  R => '&reg;', Tm => '&trade;', lq => '&ldquo;', rq => '&rdquo;',
+  );
+
 sub conv_special {
   local ($_) = $_[0];
   s/\\&//g;
   s/\\-/\\(en/g;
   s/&/&amp;/g;
   while (s/\Q\(\E(..)/$special{$1}/eg) { }
+  while (s/\Q\*(\E(..)/$strings{$1}/eg) { }
   s/</&lt;/g; s/>/&gt;/g;
   return $_;
+}
+
+sub conv_url {
+    local ($_) = $_[0];
+    # Exception: we don't want to convert this into a link
+    if (m#http://www.ebi.ac.uk/ena/cram/md5#) {
+	return $_;
+    }
+    # NB This is nowhere near complete, but sufficient for our purposes
+    s#(https?://[A-Za-z0-9._~-]+/(?:[A-Za-z0-9_-]+/?)*)#<a href="$1">$1</a>#g;
+    return $_;
 }
 
 sub ignore {
@@ -127,6 +143,10 @@ sub paragraph {
     $prefix = "</dd></dl>";
     $paramode[0] = 'p';
   }
+  if ($paramode[0] eq 'ul' && $_[0] ne 'IP' && $_[0] ne '') {
+    $prefix = "</ul>";
+    $paramode[0] = 'p';
+  }
   return "$prefix<p>";
 }
 
@@ -150,7 +170,17 @@ sub definition {
 
   my $line = <>;
   my $term = expand_line($line);
-  return "$prefix<dt>$term</dt><dd>";
+  return "$prefix<dt>$term</dt><dd><p>";
+}
+
+sub list {
+  if (!$_[1] || ($_[1] ne 'o' && $_[1] ne '\(bu')) { return paragraph(@_); }
+  my $prefix = "</li>\n";
+  if ($paramode[0] ne 'ul') { $prefix = "<ul>"; $paramode[0] = 'ul'; }
+
+  my $line = <>;
+  my $item = expand_line($line);
+  return "$prefix<li>$item";
 }
 
 my %font_style = ( B => 'b', I => 'em', R => undef );
@@ -227,7 +257,7 @@ sub table {
 
 my %request = (
   TH => $TH_subref, SH => \&section, SS => \&section,
-  PP => \&paragraph, P => \&paragraph, IP => \&paragraph, LP => \&paragraph,
+  PP => \&paragraph, P => \&paragraph, IP => \&list, LP => \&paragraph,
   RS => \&setmargin, RE => \&resetmargin, TP => \&definition,
   B => \&singlefont, I => \&singlefont, BI => \&twinfont, BR => \&twinfont,
   IB => \&twinfont, IR => \&twinfont, RB => \&twinfont, RI => \&twinfont,
@@ -249,7 +279,7 @@ sub expand_line {
     else { warn "$ARGV:$.: unknown request '$_[0]'\n"; return undef }
   }
   elsif ($_ eq '') { return paragraph('') }
-  else { return conv_fontescape(conv_special($_)) }
+  else { return conv_url(conv_fontescape(conv_special($_))) }
 }
 
 
