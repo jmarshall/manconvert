@@ -30,6 +30,7 @@ $TH_subref = \&ignore if $mode eq 'raw';
 die "$0: unknown output mode \"$mode\"\n" unless defined $TH_subref;
 
 my @paramode = ('p');
+my %fragments;
 my $final_trailer;
 
 sub split_quoted {
@@ -92,7 +93,7 @@ sub conv_url {
 	return $_;
     }
     # NB This is nowhere near complete, but sufficient for our purposes
-    s#(https?://[A-Za-z0-9._~-]+/(?:[A-Za-z0-9_-]+/?)*)#<a href="$1">$1</a>#g;
+    s#(https?://[A-Za-z0-9._~-]+/(?:[A-Za-z0-9_-]+/)*(?:[A-Za-z0-9_-]+(\.html|\.pdf|/)?)?)#<a href="$1">$1</a>#g;
     return $_;
 }
 
@@ -130,11 +131,38 @@ sub title_jekyll {
   return join("\n", '---', @out, '---');
 }
 
+sub make_fragment {
+    my ($text) = @_;
+    $text =~ s/<.*>//g;
+    $text =~ s/\s+/_/g;
+    if (!exists($fragments{$text})) {
+	$fragments{$text} = 1;
+	return $text;
+    }
+    for (my $num = 1; ; $num++) {
+	my $fragment = "${text}_$num";
+	if (!exists($fragments{$text})) {
+	    $fragments{$fragment} = 1;
+	    return $fragment;
+	}
+    }
+}
+
 my %section = ( SH => 'h1', SS => 'h2' );
 sub section {
   my $level = $section{shift @_};
   my $out = conv_fontescape(conv_special(join(' ', @_)));
-  return "<$level>$out</$level>";
+  my $prefix = "";
+  if ($paramode[0] eq 'dl') {
+      $prefix = "</dd></dl>\n";
+      $paramode[0] = 'p';
+  }
+  if ($paramode[0] eq 'ul') {
+      $prefix = "</ul>\n";
+      $paramode[0] = 'p';
+  }
+  my $fragment = make_fragment($out);
+  return qq[$prefix<$level id="$fragment"><a href="#$fragment">$out</a></$level>];
 }
 
 sub paragraph {
