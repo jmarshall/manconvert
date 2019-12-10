@@ -1,4 +1,9 @@
-#! /usr/bin/perl
+#!/usr/bin/env perl
+#
+# man2doxygen -- convert (a subset of) man source to Doxygen markup
+#
+#   Copyright (C) 2011, 2019 John Marshall
+
 use strict;
 use warnings;
 

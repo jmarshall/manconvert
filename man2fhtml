@@ -1,4 +1,9 @@
 #!/usr/bin/env perl
+#
+# man2fhtml -- convert (a subset of) man source to HTML
+#
+#   Copyright (C) 2014, 2015, 2017, 2019 John Marshall
+
 use strict;
 use warnings;
 
