@@ -367,6 +367,28 @@ sub table {
   return $out;
 }
 
+sub include {
+  my $dest = "$_[1].html";
+  if ($permalink && $permalink !~ /\.\d\.html$/) {
+    # Assume destination has no section number if the output file lacks one
+    $dest =~ s/\.\d\.html/\.html/;
+  }
+  return <<"EOF"
+<html>
+  <head>
+    <meta http-equiv="refresh" content="0; url=$dest"/>
+    <link rel="canonical" href="$dest" />
+    <script>location="$dest"</script>
+    <title>Redirecting&hellip;</title>
+  </head>
+  <body>
+    <h1>Redirecting&hellip;</h1>
+    Please click <a href="$dest">here</a> if not redirected automatically.
+  </body>
+</html>
+EOF
+}
+
 my %request = (
   TH => $TH_subref, SH => \&section, SS => \&section,
   PP => \&paragraph, P => \&paragraph, IP => \&list, LP => \&paragraph,
@@ -375,7 +397,7 @@ my %request = (
   IB => \&twinfont, IR => \&twinfont, RB => \&twinfont, RI => \&twinfont,
   br => \&constant, ad => \&ignore, na => \&ignore, de => \&ignore_macro_def,
   EX => \&constant, EE => \&constant,
-  TS => \&table, '\"' => \&ignore
+  TS => \&table, '\"' => \&ignore, so => \&include
   );
 
 $0 =~ s{.*/}{};
