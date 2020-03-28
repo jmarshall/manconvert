@@ -56,10 +56,18 @@ sub split_quoted {
 }
 
 sub conv_fontescape {
-  local ($_) = $_[0];
-  s{\\fB(.*?)\\f[PR]}{<b>$1</b>}g;
-  s{\\fI(.*?)\\f[PR]}{<em>$1</em>}g;
-  return $_;
+  my ($in_text, $add_close) = @_;
+  my $text = "";
+  my @close = ();
+  foreach (split /(\\f[BIPR])/, $in_text) {
+    if ($_ eq '\fB') { $text .= '<b>'; unshift @close, '</b>' }
+    elsif ($_ eq '\fI') { $text .= '<em>'; unshift @close, '</em>' }
+    elsif ($_ eq '\fP') { $text .= shift @close }
+    elsif ($_ eq '\fR') { $text .= join('', @close); @close = () }
+    else { $text .= $_ }
+  }
+  $text .= join('', @close) if $add_close;
+  return $text;
 }
 
 my %special = (
@@ -164,7 +172,7 @@ sub make_fragment {
 my %section = ( SH => 'h1', SS => 'h2' );
 sub section {
   my $level = $section{shift @_};
-  my $out = conv_fontescape(conv_special(join(' ', @_)));
+  my $out = conv_fontescape(conv_special(join(' ', @_)), 1);
   my $prefix = "";
   if (defined $paramode_close{$paramode[0]}) {
       $prefix = "$paramode_close{$paramode[0]}\n";
@@ -258,8 +266,7 @@ sub table {
     }
     else {
       $last = 1 if s/\.$//;
-      s/\s//g;
-      push @formats, lc $_;
+      push @formats, lc $_ if /[^-\s]/;
     }
     last if $last;
   }
@@ -273,12 +280,16 @@ sub table {
     my ($format, $td);
     if (scalar @formats > 1) { $format = shift @formats; $td = "th" }
     else { $format = $formats[0]; $td = "td" }
+    my @format = split /\s+/, $format;
 
     $out .= "<tr>";
     foreach (split $separator, $_) {
       s/^\s*//; s/\s*$//;
 
-      # FIXME interpret $format
+      my $fmt = shift @format;
+      $_ = "\\fB$_" if $fmt =~ /b/;
+      $_ = "\\fI$_" if $fmt =~ /i/;
+      $_ = conv_fontescape(conv_special($_), 1);
       $out .= "<$td>$_</$td>";
     }
     $out .= "</tr>\n";
