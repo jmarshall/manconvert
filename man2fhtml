@@ -55,18 +55,32 @@ sub split_quoted {
   return @words;
 }
 
+sub fontelt {
+  my ($prefix, $mode) = @_;
+  return "<${prefix}b>" if $mode eq 'B';
+  return "<${prefix}em>" if $mode eq 'I';
+  return "";
+}
+
 sub conv_fontescape {
   my ($in_text, $add_close) = @_;
   my $text = "";
-  my @close = ();
+  my $mode = 'R';
+  my $prevmode = 'R';
   foreach (split /(\\f[BIPR])/, $in_text) {
-    if ($_ eq '\fB') { $text .= '<b>'; unshift @close, '</b>' }
-    elsif ($_ eq '\fI') { $text .= '<em>'; unshift @close, '</em>' }
-    elsif ($_ eq '\fP') { $text .= shift @close }
-    elsif ($_ eq '\fR') { $text .= join('', @close); @close = () }
-    else { $text .= $_ }
+    my $newmode = undef;
+    if (/\\f([BIR])/) { $newmode = $1 }
+    elsif ($_ eq '\fP') { $newmode = $prevmode }
+
+    if (defined $newmode) {
+      $prevmode = $mode;
+      $_ = fontelt('/', $mode).fontelt('', $newmode);
+      $mode = $newmode;
+    }
+    $text .= $_;
   }
-  $text .= join('', @close) if $add_close;
+
+  $text .= fontelt('/', $mode) if $add_close;
   return $text;
 }
 
