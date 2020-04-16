@@ -85,17 +85,67 @@ sub conv_fontescape {
 }
 
 my %special = (
-  em => '&mdash;', en => '&ndash;', hy => '-',
-  rg => '&reg;', co => '&copy;',
-  pl => '+', mi => '&minus;', eq => '=',
-  # These '(x' escapes are locally invented and absent from groff
-  '(<' => '&lt;', '(>' => '&gt;', '(&' => '&amp;', '(.' => '&hellip;',
-  oq => '&lsquo;', cq => '&rsquo;', lq => '&ldquo;', rq => '&rdquo;',
-  '>=' => '&ge;', '<=' => '&le;', '!=' => '&ne;',
-  '+-' => '&plusmn;', mu => '&times;', di => '&divide;', '**' => '&lowast;',
-  '12' => '&frac12;', '14' => '&frac14;', '34' => '&frac34;',
-  bu => '&bull;', de => '&deg;', dg => '&dagger;', dd => '&Dagger;',
-  ua => '&uarr;', da => '&darr;', '->' => '&rarr;', '<-' => '&larr;'
+  # Quotes
+  Bq => '&bdquo;', bq => '&sbquo;', lq => '&ldquo;', rq => '&rdquo;',
+  oq => '&lsquo;', cq => '&rsquo;', aq => '\'', dq => '"',
+  Fo => '&laquo;', Fc => '&raquo;', fo => '&lsaquo;', fc => '&rsaquo;',
+  # Punctuation
+  'r!' => '&iexcl;', 'r?' => '&iquest;',
+  em => '&mdash;', en => '&ndash;', hy => '&hyphen;',
+  el => '&hellip;', # Common local addition
+  # Brackets (omitting the extension pieces)
+  lB => '[', rB => ']', lC => '{', rC => '}', la => '&lang;', ra => '&rang;',
+  # Arrows
+  '<-' => '&larr;', '->' => '&rarr;', '<>' => '&harr;',
+  da => '&darr;', ua => '&uarr;', va => '&varr;',
+  lA => '&lArr;', rA => '&rArr;', hA => '&hArr;',
+  dA => '&dArr;', uA => '&uArr;', vA => '&vArr;',
+  an => '&#x23AF;',
+  # Lines
+  ba => '|', br => '&boxv;', ul => '_', rn => '&oline;', ru => '_',
+  bb => '&brvbar;', sl => '/', rs => '\\',
+  # Text markers
+  ci => '&#x25CB;', bu => '&bull;', dd => '&Dagger;', dg => '&dagger;',
+  lz => '&loz;', sq => '&squ;', ps => '&para;', sc => '&sect;',
+  lh => '&#x261C;', rh => '&#x261E;', at => '@', sh => '#',
+  CR => '&crarr;', OK => '&check;',
+  # Legal symbols (omitting Bell Labs logo)
+  co => '&copy;', rg => '&reg;', tm => '&trade;',
+  # Currency symbols
+  Do => '$', ct => '&cent;', eu => '&euro;', Eu => '&euro;',
+  Ye => '&yen;', Po => '&pound;', Cs => '&curren;', Fn => '&fnof;',
+  # Units
+  de => '&deg;', '%0' => '&permil;', fm => '&prime;', sd => '&Prime;',
+  mc => '&micro;', Of => '&ordf;', Om => '&ordm;',
+  # Logical symbols
+  AN => '&and;', OR => '&or;', no => '&not;', tno => '&not;',
+  te => '&exist;', fa => '&forall;', st => '&ni;',
+  '3d' => '&there4;', tf => '&there4;', or => '|',
+  # Mathematical symbols
+  12 => '&frac12;', 14 => '&frac14;', 34 => '&frac34;',
+  18 => '&frac18;', 38 => '&frac38;', 58 => '&frac58;', 78 => '&frac78;',
+  S1 => '&sup1;', S2 => '&sup2;', S3 => '&sup3;',
+  pl => '+', mi => '&minus;',
+  '-+' => '&mnplus;', '+-' => '&plusmn;', 't+-' => '&plusmn;',
+  pc => '&middot;', md => '&sdot;', mu => '&times;', tmu => '&times;',
+  'c*' => '&otimes;', 'c+' => '&oplus;',
+  di => '&divide;', tdi => '&divide;',
+  'f/' => '&frasl;', '**' => '&lowast;',
+  '<=' => '&le;', '>=' => '&ge;', '<<' => '&Lt;', '>>' => '&Gt;',
+  eq => '=', '!=' => '&ne;', '==' => '&equiv;', ne => '&nequiv;',
+  '=~' => '&cong;', '|=' => '&sime;', ap => '&sim;',
+  '~~' => '&asymp;', '~=' => '&asymp;', pt => '&prop;',
+  es => '&empty;', mo => '&isin;', nm => '&notin;',
+  sb => '&sub;', nb => '&nsub;', sp => '&sup;', nc => '&nsup;',
+  ib => '&sube;', ip => '&supe;', ca => '&cap;', cu => '&cup;',
+  '/_' => '&ang;', pp => '&perp;', is => '&int;', integral => '&int;',
+  sum => '&sum;', product => '&prod;', coproduct => '&coprod;',
+  gr => '&nabla;', sr => '&radic;', sqrt => '&radic;',
+  lc => '&lceil;', rc => '&rceil;', lf => '&lfloor;', rf => '&rfloor;',
+  if => '&infin;', Ah => '&alefsym;', Im => '&image;', Re => '&real;',
+  wp => '&weierp;', pd => '&part;', '-h' => '&planck;', 'hbar' => '&planck;',
+  # Card symbols
+  CL => '&clubs;', SP => '&spades;', HE => '&hearts;', DI => '&diams;',
   );
 
 my %strings = (
@@ -116,6 +166,7 @@ sub conv_special {
   s/\\-/\\(en/g;
   s/&/&amp;/g;
   while (s/\Q\(\E(..)/$special{$1}/eg) { }
+  while (s/\Q\[\E([^]]*)\Q]\E/$special{$1}/eg) { }
   while (s/\Q\*(\E(..)/$strings{$1}/eg) { }
   s/</&lt;/g; s/>/&gt;/g;
   return $_;
