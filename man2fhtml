@@ -345,6 +345,9 @@ sub table {
     my ($format, $td);
     if (scalar @formats > 1) { $format = shift @formats; $td = "th" }
     else { $format = $formats[0]; $td = "td" }
+    # Ensure column entries are space-separated (without leading whitespace)
+    $format =~ s/([lrcnas^_=])/ $1/g;
+    $format =~ s/^\s+//;
     my @format = split /\s+/, $format;
 
     $out .= "<tr>";
