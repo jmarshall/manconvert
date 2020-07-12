@@ -225,9 +225,9 @@ sub make_fragment {
         $fragments{$text} = 1;
         return $text;
     }
-    for (my $num = 1; ; $num++) {
+    for (my $num = 2; ; $num++) {
         my $fragment = "${text}_$num";
-        if (!exists($fragments{$text})) {
+        if (!exists($fragments{$fragment})) {
             $fragments{$fragment} = 1;
             return $fragment;
         }
