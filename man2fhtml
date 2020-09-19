@@ -2,7 +2,7 @@
 #
 # man2fhtml -- convert (a subset of) man source to HTML
 #
-#   Copyright (C) 2014, 2015, 2017, 2019, 2020 John Marshall
+#   Copyright (C) 2014, 2015, 2017, 2019-2021 John Marshall
 
 use strict;
 use warnings;
@@ -28,6 +28,8 @@ GetOptions(
     'output|o=s' => \$output_fname,
     'help' => sub { print $usage; exit 0; }) or die $usage;
 
+push @ARGV, '-' if scalar @ARGV == 0;
+
 my $TH_subref;
 $TH_subref = \&title_html if $mode eq 'html';
 $TH_subref = \&title_jekyll if $mode eq 'jekyll';
@@ -38,6 +40,36 @@ my @paramode = ('p');
 my @fontmodes = ('R', 'R');
 my %fragments;
 my $final_trailer;
+my @instack;
+
+sub open_input {
+    my ($fname) = @_;
+    my $relname = $fname;
+    if (scalar @instack > 0 && $fname !~ m{^/} && $fname ne '-') {
+        local $_ = $instack[-2];
+        if (m{/}) { s{/[^/]*$}{}; $relname = "$_/$fname"; }
+    }
+
+    open my $inf, $relname or die "$0: can't open \"$fname\": $!\n";
+    push @instack, 0, $fname, $inf;
+}
+
+sub warnloc {
+    warn "$instack[-2]:$instack[-3]: ", @_;
+}
+
+sub getline {
+    for (;;) {
+        return undef if scalar @instack == 0;
+
+        my $inf = $instack[-1];
+        local $_ = <$inf>;
+        if (defined $_) { $instack[-3]++; return $_; }
+
+        close $inf or die "$0: closing \"$instack[-2]\" failed: $!\n";
+        $#instack -= 3;
+    }
+}
 
 sub split_quoted {
     local ($_) = @_;
@@ -193,7 +225,13 @@ sub ignore {
 }
 
 sub ignore_macro_def {
-    while (<>) { last if /^[.'][.]/ }
+    while ($_ = getline()) { last if /^[.'][.]/ }
+    return undef;
+}
+
+sub include {
+    my (undef, $fname) = @_;
+    open_input($fname);
     return undef;
 }
 
@@ -269,7 +307,7 @@ sub setmargin {
 sub resetmargin {
     my $prevmode = shift @paramode;
     if (scalar @paramode == 0) {
-        warn "$ARGV:$.: unmatched .RE request\n";
+        warnloc "unmatched .RE request\n";
         @paramode = ('p');
     }
     return $paramode_close{$prevmode};
@@ -279,7 +317,7 @@ sub definition {
     my $prefix = "</dd>";
     if ($paramode[0] ne 'dl') { $prefix = "<dl>"; $paramode[0] = 'dl'; }
 
-    my $line = <>;
+    my $line = getline();
     my $term = expand_line($line);
     return "$prefix<dt>$term</dt><dd><p>";
 }
@@ -289,7 +327,7 @@ sub list {
     my $prefix = "</li>\n";
     if ($paramode[0] ne 'ul') { $prefix = "<ul>"; $paramode[0] = 'ul'; }
 
-    my $line = <>;
+    my $line = getline();
     my $item = expand_line($line);
     return "$prefix<li>$item";
 }
@@ -326,7 +364,7 @@ sub table {
     my $options = "";
     my $alignment = "";
     my $separator = "\t";
-    while (<>) {
+    while ($_ = getline()) {
         chomp;
         my $last = 0;
         if (s/;$//) {
@@ -343,7 +381,7 @@ sub table {
 
     my $out = "<table$alignment>\n";
 
-    while (<>) {
+    while ($_ = getline()) {
         chomp;
         last if /^[.']TE/;
 
@@ -380,7 +418,7 @@ my %request = (
     IB => \&twinfont, IR => \&twinfont, RB => \&twinfont, RI => \&twinfont,
     br => \&constant, ad => \&ignore, na => \&ignore, de => \&ignore_macro_def,
     EX => \&constant, EE => \&constant,
-    TS => \&table, '\"' => \&ignore
+    TS => \&table, '\"' => \&ignore, so => \&include,
 );
 
 $0 =~ s{.*/}{};
@@ -393,7 +431,7 @@ sub expand_line {
         if (length $_ == 1) { return undef }
         @_ = split_quoted(substr($_, 1));
         if (exists $request{$_[0]}) { return $request{$_[0]}(@_) }
-        else { warn "$ARGV:$.: unknown request '$_[0]'\n"; return undef }
+        else { warnloc "unknown request '$_[0]'\n"; return undef }
     }
     elsif ($_ eq '') { return paragraph('') }
     else { return conv_url(conv_fontescape(conv_special($_))) }
@@ -406,7 +444,9 @@ if (defined $output_fname) {
 }
 else { $outf = \*STDOUT }
 
-while (<>) {
+open_input($ARGV[0]);
+
+while ($_ = getline()) {
     $_ = expand_line($_);
     print $outf "$_\n" if defined $_;
 }
