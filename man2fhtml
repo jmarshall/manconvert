@@ -35,6 +35,7 @@ $TH_subref = \&ignore if $mode eq 'raw';
 die "$0: unknown output mode \"$mode\"\n" unless defined $TH_subref;
 
 my @paramode = ('p');
+my @fontmodes = ('R', 'R');
 my %fragments;
 my $final_trailer;
 
@@ -65,8 +66,7 @@ sub fontelt {
 sub conv_fontescape {
     my ($in_text, $add_close) = @_;
     my $text = "";
-    my $mode = 'R';
-    my $prevmode = 'R';
+    my ($mode, $prevmode) = @fontmodes;
     foreach (split /(\\f[BIPR])/, $in_text) {
         my $newmode = undef;
         if (/\\f([BIR])/) { $newmode = $1 }
@@ -80,7 +80,12 @@ sub conv_fontescape {
         $text .= $_;
     }
 
-    $text .= fontelt('/', $mode) if $add_close;
+    if ($add_close) {
+        $text .= fontelt('/', $mode);
+        $mode = $prevmode = 'R';
+    }
+
+    @fontmodes = ($mode, $prevmode);
     return $text;
 }
 
