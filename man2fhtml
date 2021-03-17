@@ -6,6 +6,7 @@
 
 use strict;
 use warnings;
+use IO::Handle;
 
 use Getopt::Long qw(:config bundling no_ignore_case);
 
@@ -402,6 +403,14 @@ if (defined $output_fname) {
 else { $outf = \*STDOUT }
 
 while (<>) {
+  # Peek at the next character to see if we can assemble a paragraph
+  my $next = getc(ARGV);
+  ARGV->ungetc(ord($next)) if (defined($next));
+  while ($next && substr($_, 0, 1) !~ /[\n.']/ && $next !~ /[\n.']/) {
+    $_ .= <>;
+    $next = getc(ARGV);
+    ARGV->ungetc(ord($next)) if (defined($next));
+  }
   $_ = expand_line($_);
   print $outf "$_\n" if defined $_;
 }
