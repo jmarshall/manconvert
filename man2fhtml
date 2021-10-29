@@ -353,6 +353,16 @@ sub table {
     $out .= "<tr>";
     foreach (split $separator, $_) {
       s/^\s*//; s/\s*$//;
+      if ($_ eq 'T{') {
+	  my @lines;
+	  while (my $l = <>) {
+	      $l =~ s/^\s*//;
+	      $l =~ s/\s*$//;
+	      last if ($l eq 'T}');
+	      push(@lines, $l);
+	  }
+	  $_ = join("\n", @lines);
+      }
 
       my $fmt = shift @format;
       $_ = "\\fB$_" if $fmt =~ /b/;
