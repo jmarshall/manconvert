@@ -2,7 +2,7 @@
 #
 # man2fhtml -- convert (a subset of) man source to HTML
 #
-#   Copyright (C) 2014, 2015, 2017, 2019-2021 John Marshall
+#   Copyright (C) 2014, 2015, 2017, 2019-2022 John Marshall
 
 use strict;
 use warnings;
@@ -384,6 +384,16 @@ sub table {
     while ($_ = getline()) {
         chomp;
         last if /^[.']TE/;
+
+        while (/T\{$/) {
+            my $line = substr($_, 0, -2);
+            while ($_ = getline()) {
+                chomp;
+                last if /^T\}/;
+                $line .= "$_ ";
+            }
+            $_ = $line . substr($_, 2);
+        }
 
         my ($format, $td);
         if (scalar @formats > 1) { $format = shift @formats; $td = "th" }
