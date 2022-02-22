@@ -211,12 +211,12 @@ sub conv_special {
 
 sub conv_url {
     local ($_) = $_[0];
-    # Exception: we don't want to convert this into a link
-    if (m#http://www.ebi.ac.uk/ena/cram/md5#) {
+    # Exception: we don't want to convert these into links
+    if (m#http://www.ebi.ac.uk/ena/cram/md5# || m#//host/#) {
         return $_;
     }
     # NB This is nowhere near complete, but sufficient for our purposes
-    s#(https?://[A-Za-z0-9._~-]+/(?:[A-Za-z0-9_-]+/)*(?:[A-Za-z0-9_-]+(\.html|\.pdf|/)?)?)#<a href="$1">$1</a>#g;
+    s#(https?://[A-Za-z0-9._~-]+/(?:[A-Za-z0-9._-]+/)*(?:[A-Za-z0-9_-]+(\.html|\.pdf|/)?)?)#<a href="$1">$1</a>#g;
     return $_;
 }
 
