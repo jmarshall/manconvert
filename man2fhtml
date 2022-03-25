@@ -423,7 +423,7 @@ sub table {
 my %request = (
     TH => $TH_subref, SH => \&section, SS => \&section,
     PP => \&paragraph, P => \&paragraph, IP => \&list, LP => \&paragraph,
-    RS => \&setmargin, RE => \&resetmargin, TP => \&definition,
+    RS => \&setmargin, RE => \&resetmargin, TP => \&definition, PD => \&ignore,
     B => \&singlefont, I => \&singlefont, BI => \&twinfont, BR => \&twinfont,
     IB => \&twinfont, IR => \&twinfont, RB => \&twinfont, RI => \&twinfont,
     br => \&constant, ad => \&ignore, na => \&ignore, de => \&ignore_macro_def,
