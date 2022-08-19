@@ -140,7 +140,7 @@ my %special = (
     an => '&#x23AF;',
     # Lines
     ba => '|', br => '&boxv;', ul => '_', rn => '&oline;', ru => '_',
-    bb => '&brvbar;', sl => '/', rs => '\\',
+    bb => '&brvbar;', sl => '/', rs => '&bsol;',
     # Text markers
     ci => '&#x25CB;', bu => '&bull;', dd => '&Dagger;', dg => '&dagger;',
     lz => '&loz;', sq => '&squ;', ps => '&para;', sc => '&sect;',
