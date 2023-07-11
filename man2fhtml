@@ -2,7 +2,7 @@
 #
 # man2fhtml -- convert (a subset of) man source to HTML
 #
-#   Copyright (C) 2014, 2015, 2017, 2019-2022 John Marshall
+#   Copyright (C) 2014, 2015, 2017, 2019-2023 John Marshall
 
 use strict;
 use warnings;
@@ -140,7 +140,7 @@ my %special = (
     an => '&#x23AF;',
     # Lines
     ba => '|', br => '&boxv;', ul => '_', rn => '&oline;', ru => '_',
-    bb => '&brvbar;', sl => '/', rs => '\\',
+    bb => '&brvbar;', sl => '/', rs => "\032", # SUB will be rewritten to \ later
     # Text markers
     ci => '&#x25CB;', bu => '&bull;', dd => '&Dagger;', dg => '&dagger;',
     lz => '&loz;', sq => '&squ;', ps => '&para;', sc => '&sect;',
@@ -204,6 +204,7 @@ sub conv_special {
     s/&/&amp;/g;
     while (s/\Q\(\E(..)/$special{$1}/eg) { }
     while (s/\Q\[\E([^]]*)\Q]\E/$special{$1}/eg) { }
+    s/\032/\\/g; # Finalise \(rs as a \ character
     while (s/\Q\*(\E(..)/$strings{$1}/eg) { }
     s/</&lt;/g; s/>/&gt;/g;
     return $_;
